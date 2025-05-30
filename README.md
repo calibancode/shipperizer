@@ -43,14 +43,13 @@ Live here → [calibancode.github.io/shipperizer/](https://calibancode.github.io
 - **Save/Load JSON** - Save your chart state or reload it later
 - **Undo/Redo** - Basic action history
 - **Delete** - Select a node (yellow highlight) and press `Del` or `Backspace`
+- **Autosave** - Canvas state saved to localStorage automatically and can be cleared manually
 
 ## How to Host
 You can self-host via GitHub Pages or locally with:
 
 ```
-
 python -m http.server
-
 ```
 
 Just clone the repo and go ham!
