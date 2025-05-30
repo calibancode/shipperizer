@@ -185,6 +185,27 @@ function startCy(characterNames) {
   setUpEventHandlers();
 }
 
+async function downscaleTo128(dataURL){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const dim = Math.min(img.width, img.height);
+      const sx = (img.width  - dim) / 2;
+      const sy = (img.height - dim) / 2;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+
+      ctx.drawImage(img, sx, sy, dim, dim, 0, 0, 128, 128);
+
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.src = dataURL;
+  });
+}
+
 const uploadBtn = document.getElementById('uploadBtn');
 const filePicker = document.getElementById('filePicker');
 
@@ -210,11 +231,21 @@ filePicker.onchange = async () => {
     bRect.top  + bRect.height / 2
   );
 
-  const uploads = await Promise.all(files.map(async file => {
-    const name    = file.name.replace(/\.[^/.]+$/, '');
-    const dataURL = await fileToDataURL(file);
-    return { name, dataURL };
-  }));
+  const validTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+  const uploads = [];
+
+  for (const file of files) {
+    if (!validTypes.includes(file.type)) {
+      alert(`Skipping ${file.name}: unsupported file type`);
+      continue;
+    }
+    const name    = file.name.replace(/\.[^.]+$/, '');
+    const original = await fileToDataURL(file);
+    const dataURL  = await downscaleTo128(original);
+    uploads.push({ name, dataURL });
+  }
+
+  if (!uploads.length) return;
 
   cy.startBatch();
 
