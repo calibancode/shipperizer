@@ -21,43 +21,90 @@ const relMenuMobile = document.getElementById('relMenuMobile');
 const undoStack = [];
 const redoStack = [];
 
-function snapshot(){
-  undoStack.push(cy.json());
+function captureState() {
+  const cleanElems = cy.elements().jsons().map(el => {
+    if (el.group === 'nodes' && el.classes) {
+
+      const filtered = el.classes
+        .split(' ')
+        .filter(c => c !== 'cy-node-first' && c !== 'cy-node-second')
+        .join(' ');
+      return { ...el, classes: filtered };
+    }
+    return el;
+  });
+
+  localStorage.setItem('shipperizer_autosave', JSON.stringify(cleanElems));
+  return cleanElems;
+}
+
+function snapshot() {
+  setTimeout(() => {
+    undoStack.push(captureState());
+    redoStack.length = 0;
+    updateHistoryButtons();
+  }, 50);
+}
+
+function snapshotNow() {
+  undoStack.push(captureState());
   redoStack.length = 0;
   updateHistoryButtons();
+  updateAutosave();
 }
-function restore(json){
-  cy.json(json);
-  clearSelection();
+
+function restore(elements) {
+  cy.elements().remove();
+  cy.add(elements);
+
+  cy.nodes().removeClass('cy-node-first cy-node-second');
+
   firstNode = cy.nodes('.cy-node-first')[0] || null;
-  if (firstNode) firstNode.addClass('cy-node-first');
   secondNode = cy.nodes('.cy-node-second')[0] || null;
+
+  if (firstNode)  firstNode.addClass('cy-node-first');
   if (secondNode) secondNode.addClass('cy-node-second');
+
   cy.nodes().unlock();
   applyNodeSize();
-  document.getElementById('layoutBtn').click();
 }
 function updateHistoryButtons(){
   undoBtn.disabled = !undoStack.length;
   redoBtn.disabled = !redoStack.length;
+
 }
 
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
 updateHistoryButtons();
 
-undoBtn.onclick = ()=>{
-  if(!undoStack.length) return;
-  redoStack.push(cy.json());
+undoBtn.onclick = () => {
+  if (!undoStack.length) return;
+
+  redoStack.push(cy.elements().jsons());
   const prev = undoStack.pop();
+
   restore(prev);
+  localStorage.setItem(
+    'shipperizer_autosave',
+    JSON.stringify(cy.elements().jsons())
+  );
+
   updateHistoryButtons();
 };
-redoBtn.onclick = ()=>{
-  if(!redoStack.length) return;
-  undoStack.push(cy.json());
+
+redoBtn.onclick = () => {
+  if (!redoStack.length) return;
+
+  undoStack.push(cy.elements().jsons());
   const next = redoStack.pop();
+
   restore(next);
+  localStorage.setItem(
+    'shipperizer_autosave',
+    JSON.stringify(cy.elements().jsons())
+  );
+
   updateHistoryButtons();
 };
 
@@ -107,6 +154,39 @@ async function loadCharacters() {
 
 loadCharacters().then(names => {
   startCy(names);
+  const autosave = localStorage.getItem('shipperizer_autosave');
+  if (autosave) {
+    try {
+      const elems = JSON.parse(autosave);
+
+      cy.batch(() => {
+        cy.elements().remove();
+        cy.add(elems);
+      });
+
+      cy.edges().forEach(e => {
+        if (e.data('merged')) {
+          e.style({
+            'source-arrow-shape': 'triangle',
+            'target-arrow-shape': 'triangle'
+          });
+        } else {
+          e.style({
+            'source-arrow-shape': 'none',
+            'target-arrow-shape': 'triangle'
+          });
+        }
+      });
+
+      clearSelection();
+      cy.nodes().unlock();
+      applyNodeSize();
+    } catch (e) {
+      console.warn('Autosave corrupted, skipping.');
+    }
+  } else {
+    document.getElementById('layoutBtn').click();
+  }
   snapshot();
 });
 
@@ -271,6 +351,7 @@ filePicker.onchange = async () => {
 
   applyNodeSize();
   document.getElementById('layoutBtn').click();
+  snapshot();
 };
 
 function fileToDataURL(file) {
@@ -312,9 +393,17 @@ function setUpEventHandlers() {
   });
 
   cy.on('tap', 'edge', e => {
-    snapshot();
-    e.target.remove();
+    undoStack.push(cy.elements().jsons());      
+    redoStack.length = 0;
     updateHistoryButtons();
+
+    e.target.remove();                          
+
+    localStorage.setItem('shipperizer_autosave', JSON.stringify(cy.elements().jsons()));
+  });
+
+  cy.on('dragfree', 'node', () => {
+    snapshot();
   });
 
   document.getElementById('exportBtn').onclick = () => {
@@ -446,6 +535,14 @@ function setUpEventHandlers() {
         easing: 'spring(80, 10)'
       });
     });
+    setTimeout(snapshotNow, 650);
+  };
+
+  document.getElementById('clearAutosaveBtn').onclick = () => {
+    if (confirm('Clear autosaved data? This cannot be undone.')) {
+      localStorage.removeItem('shipperizer_autosave');
+      alert('Autosave cleared. Reload to start fresh.');
+    }
   };
 
   function handleRelationship(rel){
@@ -491,17 +588,22 @@ function setUpEventHandlers() {
     handleRelationship(rel);
   });
 
-
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') clearSelection();
-    if (e.key === 'Delete' || e.key === 'Backspace') {
-      if (firstNode) {
-        snapshot();
-        cy.remove(firstNode.connectedEdges());
-        cy.remove(firstNode);
-        clearSelection();
-        updateHistoryButtons();
-      }
+
+    if ((e.key === 'Delete' || e.key === 'Backspace') && firstNode) {
+
+      const stateBefore = cy.elements().jsons();   
+      undoStack.push(stateBefore);
+      redoStack.length = 0;
+      updateHistoryButtons();
+
+      cy.remove(firstNode.connectedEdges());
+      cy.remove(firstNode);
+      clearSelection();
+
+      localStorage.setItem('shipperizer_autosave',
+                          JSON.stringify(cy.elements().jsons()));
     }
   });
 
@@ -536,7 +638,7 @@ function setUpEventHandlers() {
 
   document.getElementById('clearBtn').onclick = () => {
     if (!confirm('Delete ALL nodes and relationships?')) return;
-    snapshot();
+    snapshotNow();
     cy.elements().remove();
     clearSelection();
     updateHistoryButtons();
@@ -582,7 +684,6 @@ function openRelMenu(x, y){
     relMenu.style.display = 'flex';
   }
 }
-
 
 const tip = document.getElementById('tooltip');
 let tipTimer = null;
