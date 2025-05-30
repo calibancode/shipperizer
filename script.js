@@ -10,10 +10,13 @@ const REL_SYMBOL = {
   friend:'♦️'
 };
 
+const isMobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+
 let cy = null;
 let firstNode = null;
 let secondNode = null;
 const relMenu = document.getElementById('relMenu');
+const relMenuMobile = document.getElementById('relMenuMobile');
 
 const undoStack = [];
 const redoStack = [];
@@ -110,8 +113,13 @@ loadCharacters().then(names => {
 function getNodeSize() {
   const w = cy ? cy.width()  : window.innerWidth;
   const h = cy ? cy.height() : window.innerHeight;
-  const base = Math.min(w, h);
-  return Math.max(64, Math.min(160, Math.floor(base / 12)));
+
+  const base      = Math.min(w, h);
+  const divisor   = isMobile ? 10 : 12;
+  const minSize   = isMobile ? 80 : 64;
+  const maxSize   = isMobile ? 200 : 160;
+
+  return Math.max(minSize, Math.min(maxSize, Math.floor(base / divisor)));
 }
 
 function applyNodeSize() {
@@ -409,44 +417,49 @@ function setUpEventHandlers() {
     });
   };
 
-  relMenu.addEventListener('mousedown', e => {
-    const rel = e.target.dataset.rel;
-    if (!rel) return;
-    relMenu.style.display = 'none';
-
+  function handleRelationship(rel){
     snapshot();
-
     const src = firstNode.id();
     const tgt = secondNode.id();
 
     const merged = getMerged(src, tgt);
     if (merged.nonempty()) {
-      if (merged.data('rel') === rel) {
-        clearSelection();
-        return;
-      }
+      if (merged.data('rel') === rel) { clearSelection(); return; }
       const oldRel = merged.data('rel');
       merged.remove();
       createEdge(tgt, src, oldRel);
       createEdge(src, tgt, rel);
-      clearSelection();
-      return;
+      clearSelection(); return;
     }
 
     const forward = getEdge(src, tgt);
     if (forward.nonempty()) forward.remove();
 
     const reverse = getEdge(tgt, src);
-
     if (reverse.nonempty() && reverse.data('rel') === rel) {
       reverse.remove();
       createMerged(src, tgt, rel);
     } else {
       createEdge(src, tgt, rel);
     }
-
     clearSelection();
+  }
+
+  relMenu.addEventListener('mousedown', e=>{
+    const rel = e.target.dataset.rel;
+    if (!rel) return;
+    relMenu.style.display = 'none';
+    handleRelationship(rel);
   });
+
+  relMenuMobile.addEventListener('click', e => {
+    const rel = e.target.dataset.rel;
+    if (!rel) return;
+
+    relMenuMobile.style.display = 'none';
+    handleRelationship(rel);
+  });
+
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') clearSelection();
@@ -524,13 +537,21 @@ function clearSelection() {
   if (secondNode) secondNode.removeClass('cy-node-second');
   firstNode = secondNode = null;
   relMenu.style.display = 'none';
+  relMenuMobile.style.display = 'none';
 }
 
-function openRelMenu(x, y) {
-  relMenu.style.left = `${x}px`;
-  relMenu.style.top  = `${y}px`;
-  relMenu.style.display = 'flex';
+function openRelMenu(x, y){
+  if (isMobile){
+    relMenuMobile.querySelectorAll('button').forEach(btn => btn.blur());
+
+    relMenuMobile.style.display = 'flex';
+  }else{
+    relMenu.style.left  = `${x}px`;
+    relMenu.style.top   = `${y}px`;
+    relMenu.style.display = 'flex';
+  }
 }
+
 
 const tip = document.getElementById('tooltip');
 let tipTimer = null;
