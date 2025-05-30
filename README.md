@@ -56,4 +56,4 @@ python -m http.server
 Just clone the repo and go ham!
 
 ## License
-GPLv3 — you can copy, modify, and redistribute, but derivative work _must stay open_. See [LICENSE](https://github.com/calibancode/shipperizer/blob/main/LICENSE) for more details.
+**GPLv3** — you can copy, modify, and redistribute, but derivative work _must stay open_. See [LICENSE](https://github.com/calibancode/shipperizer/blob/main/LICENSE) for more details.
