@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ship Visualiser</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+</head>
+<body>
+  <div id="topbar">
+    <button id="layoutBtn" title="Re-layout nodes">🔃 Organize</button>
+    <button id="uploadBtn" title="Upload PNGs">📤 Upload Images</button>
+    <button id="clearBtn"  title="Remove everything">🗑 Clear</button>
+    <button id="saveBtn"   title="Save graph to JSON">💾 Save</button>
+    <button id="loadBtn"   title="Load graph from JSON">📂 Load</button>
+    <button id="exportBtn" title="Download PNG">📥 Export</button>
+  </div>
+
+  <div id="historyBar">
+    <button id="undoBtn" title="Undo">⤺ Undo</button>
+    <button id="redoBtn" title="Redo">⤻ Redo</button>
+  </div>
+
+  <div id="tooltip" hidden></div>
+  <div id="cy"></div>
+
+  <input id="filePicker" type="file" accept="image/*" multiple hidden />
+  <input id="jsonPicker" type="file" accept="application/json" hidden />
+
+  <div id="relMenu" hidden>
+    <button data-rel="love"   style="color:#e41b1b">❤️</button>
+    <button data-rel="hate"   style="color:#000">♠️</button>
+    <button data-rel="friend" style="color:#777">♦️</button>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
