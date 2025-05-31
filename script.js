@@ -429,7 +429,7 @@ function setUpEventHandlers() {
         target : e.data('target'),
         rel    : e.data('rel'),
         color  : e.data('color'),
-        merged : e.data('merged') || false
+        merged : !!e.data('merged')
       }
     }));
 
@@ -466,6 +466,21 @@ function setUpEventHandlers() {
     cy.elements().remove();
     clearSelection();
     cy.add(elems);
+
+    cy.edges().forEach(e => {
+      if (e.data('merged')) {
+        e.style({
+          'source-arrow-shape': 'triangle',
+          'target-arrow-shape': 'triangle'
+        });
+      } else {
+        e.style({
+          'source-arrow-shape': 'none',
+          'target-arrow-shape': 'triangle'
+        });
+      }
+    });
+
     cy.nodes().unlock();
     applyNodeSize();
     document.getElementById('layoutBtn').click();
