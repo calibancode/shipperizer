@@ -107,5 +107,22 @@ html,body{
   z-index:15;
 }
 
+@media (pointer: coarse), (max-width: 800px) {
+  #topbar button,
+  #historyBar button,
+  #undoBtn,
+  #redoBtn,
+  #clearAutosaveBtn {
+    font-size: 1.25em;
+    padding: 14px 20px;
+    min-width: 56px;
+    min-height: 48px;
+    border-radius: 8px;
+  }
+  #topbar, #historyBar {
+    gap: 12px;
+  }
+}
+
 .cy-node-first {border:4px solid #ffea00 !important}
 .cy-node-second{border:4px solid #3498db !important}
