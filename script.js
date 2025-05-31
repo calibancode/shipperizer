@@ -21,10 +21,9 @@ const relMenuMobile = document.getElementById('relMenuMobile');
 const undoStack = [];
 const redoStack = [];
 
-function captureState() {
-  const cleanElems = cy.elements().jsons().map(el => {
+function graphJSON() {
+  return cy.elements().jsons().map(el => {
     if (el.group === 'nodes' && el.classes) {
-
       const filtered = el.classes
         .split(' ')
         .filter(c => c !== 'cy-node-first' && c !== 'cy-node-second')
@@ -33,24 +32,16 @@ function captureState() {
     }
     return el;
   });
-
-  localStorage.setItem('shipperizer_autosave', JSON.stringify(cleanElems));
-  return cleanElems;
 }
 
-function snapshot() {
-  setTimeout(() => {
-    undoStack.push(captureState());
-    redoStack.length = 0;
-    updateHistoryButtons();
-  }, 50);
-}
-
-function snapshotNow() {
-  undoStack.push(captureState());
+function pushUndo() {
+  undoStack.push(graphJSON());
   redoStack.length = 0;
   updateHistoryButtons();
-  updateAutosave();
+}
+
+function saveAutosave() {
+  localStorage.setItem('shipperizer_autosave', JSON.stringify(graphJSON()));
 }
 
 function restore(elements) {
@@ -80,31 +71,19 @@ updateHistoryButtons();
 
 undoBtn.onclick = () => {
   if (!undoStack.length) return;
-
-  redoStack.push(cy.elements().jsons());
+  redoStack.push(graphJSON());
   const prev = undoStack.pop();
-
   restore(prev);
-  localStorage.setItem(
-    'shipperizer_autosave',
-    JSON.stringify(cy.elements().jsons())
-  );
-
+  saveAutosave();
   updateHistoryButtons();
 };
 
 redoBtn.onclick = () => {
   if (!redoStack.length) return;
-
-  undoStack.push(cy.elements().jsons());
+  undoStack.push(graphJSON());
   const next = redoStack.pop();
-
   restore(next);
-  localStorage.setItem(
-    'shipperizer_autosave',
-    JSON.stringify(cy.elements().jsons())
-  );
-
+  saveAutosave();
   updateHistoryButtons();
 };
 
@@ -187,7 +166,6 @@ loadCharacters().then(names => {
   } else {
     document.getElementById('layoutBtn').click();
   }
-  snapshot();
 });
 
 function getNodeSize() {
@@ -327,6 +305,7 @@ filePicker.onchange = async () => {
 
   if (!uploads.length) return;
 
+  pushUndo();
   cy.startBatch();
 
   uploads.forEach(({ name, dataURL }) => {
@@ -351,7 +330,8 @@ filePicker.onchange = async () => {
 
   applyNodeSize();
   document.getElementById('layoutBtn').click();
-  snapshot();
+  setTimeout(saveAutosave, 650);
+  updateHistoryButtons();
 };
 
 function fileToDataURL(file) {
@@ -393,17 +373,20 @@ function setUpEventHandlers() {
   });
 
   cy.on('tap', 'edge', e => {
-    undoStack.push(cy.elements().jsons());      
-    redoStack.length = 0;
+    pushUndo();
+    e.target.remove();
+    saveAutosave();
     updateHistoryButtons();
+  });
 
-    e.target.remove();                          
-
-    localStorage.setItem('shipperizer_autosave', JSON.stringify(cy.elements().jsons()));
+  cy.on('grab', 'node', () => {
+    pushUndo();
+    updateHistoryButtons();
   });
 
   cy.on('dragfree', 'node', () => {
-    snapshot();
+    saveAutosave();
+    updateHistoryButtons();
   });
 
   document.getElementById('exportBtn').onclick = () => {
@@ -489,6 +472,7 @@ function setUpEventHandlers() {
   };
 
   document.getElementById('layoutBtn').onclick = () => {
+    pushUndo();
     const nodes = cy.nodes().sort((a, b) => a.id().localeCompare(b.id()));
     if (nodes.empty()) return;
 
@@ -535,7 +519,8 @@ function setUpEventHandlers() {
         easing: 'spring(80, 10)'
       });
     });
-    setTimeout(snapshotNow, 650);
+    setTimeout(saveAutosave, 650);
+    updateHistoryButtons();
   };
 
   document.getElementById('clearAutosaveBtn').onclick = () => {
@@ -546,7 +531,7 @@ function setUpEventHandlers() {
   };
 
   function handleRelationship(rel){
-    snapshot();
+    pushUndo();
     const src = firstNode.id();
     const tgt = secondNode.id();
 
@@ -571,6 +556,8 @@ function setUpEventHandlers() {
       createEdge(src, tgt, rel);
     }
     clearSelection();
+    saveAutosave();
+    updateHistoryButtons();
   }
 
   relMenu.addEventListener('mousedown', e=>{
@@ -589,21 +576,52 @@ function setUpEventHandlers() {
   });
 
   document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
     if (e.key === 'Escape') clearSelection();
 
     if ((e.key === 'Delete' || e.key === 'Backspace') && firstNode) {
-
-      const stateBefore = cy.elements().jsons();   
-      undoStack.push(stateBefore);
-      redoStack.length = 0;
-      updateHistoryButtons();
-
+      pushUndo();
       cy.remove(firstNode.connectedEdges());
       cy.remove(firstNode);
       clearSelection();
+      saveAutosave();
+      updateHistoryButtons();
+    }
 
-      localStorage.setItem('shipperizer_autosave',
-                          JSON.stringify(cy.elements().jsons()));
+    if (e.key === 'o' || e.key === 'O') {
+      document.getElementById('layoutBtn').click();
+    }
+
+    if (e.key === 'u' || e.key === 'U') {
+      document.getElementById('uploadBtn').click();
+    }
+
+    if (e.key === 'c' || e.key === 'C') {
+      document.getElementById('clearBtn').click();
+    }
+
+    if (e.key === 's' || e.key === 'S') {
+      document.getElementById('saveBtn').click();
+    }
+
+    if (e.key === 'l' || e.key === 'L') {
+      document.getElementById('loadBtn').click();
+    }
+
+    if (e.key === 'e' || e.key === 'E') {
+      document.getElementById('exportBtn').click();
+    }
+
+    if (e.ctrlKey && !e.shiftKey && e.key === 'z') {
+      e.preventDefault();
+      undoBtn.click();
+    } else if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'Z')) {
+      e.preventDefault();
+      redoBtn.click();
+    } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'delete') {
+      e.preventDefault();
+      document.getElementById('clearAutosaveBtn').click();
     }
   });
 
@@ -638,9 +656,10 @@ function setUpEventHandlers() {
 
   document.getElementById('clearBtn').onclick = () => {
     if (!confirm('Delete ALL nodes and relationships?')) return;
-    snapshotNow();
+    pushUndo();
     cy.elements().remove();
     clearSelection();
+    saveAutosave();
     updateHistoryButtons();
   };
 }
