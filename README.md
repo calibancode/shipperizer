@@ -56,3 +56,5 @@ Just clone the repo and go ham!
 
 ## License
 **GPLv3** — you can copy, modify, and redistribute, but derivative work _must stay open_. See [LICENSE](https://github.com/calibancode/shipperizer/blob/main/LICENSE) for more details.
+
+**Disclaimer** — Character assets are © Vivziepop / SpindleHorse Toons, used under fair use for fan purposes. This repo is noncommercial and for personal/fan use only.
