@@ -483,7 +483,6 @@ function setUpEventHandlers() {
 
     cy.nodes().unlock();
     applyNodeSize();
-    document.getElementById('layoutBtn').click();
   };
 
   document.getElementById('layoutBtn').onclick = () => {
