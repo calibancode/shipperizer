@@ -8,7 +8,7 @@ Live here → [calibancode.github.io/shipperizer/](https://calibancode.github.io
 
 ## Features
 
-- Drag to arrange and auto-organize circular layout
+- Drag-and-drop, rearrange, and auto-organize in a circular layout
 - Click two characters to assign a relationship:
   - ❤️ Love
   - ♠️ Hatef*ck
@@ -38,6 +38,7 @@ Live here → [calibancode.github.io/shipperizer/](https://calibancode.github.io
 - Click a line to delete a relationship
 
 #### Extras:
+- **Drag-n-drop** - Drag or copy-paste in images from your computer or the web
 - **Organize** - Rearranges into a clean circle while preserving relative order
 - **Export** - Saves a PNG of your chart
 - **Save/Load JSON** - Save your chart state or reload it later
