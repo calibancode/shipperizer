@@ -124,5 +124,10 @@ html,body{
   }
 }
 
+#cy.drag-over {
+  outline: 3px dashed #3498db;
+  outline-offset: -3px;
+}
+
 .cy-node-first {border:4px solid #ffea00 !important}
 .cy-node-second{border:4px solid #3498db !important}

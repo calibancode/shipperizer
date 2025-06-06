@@ -279,8 +279,8 @@ uploadBtn.onclick = () => {
   filePicker.click();
 };
 
-filePicker.onchange = async () => {
-  const files = Array.from(filePicker.files);
+async function handleUploads(fileList) {
+  const files = Array.from(fileList);
   if (!files.length) return;
 
   const bRect = uploadBtn.getBoundingClientRect();
@@ -297,7 +297,7 @@ filePicker.onchange = async () => {
       alert(`Skipping ${file.name}: unsupported file type`);
       continue;
     }
-    const name    = file.name.replace(/\.[^.]+$/, '');
+    const name     = file.name.replace(/\.[^.]+$/, '');
     const original = await fileToDataURL(file);
     const dataURL  = await downscaleTo128(original);
     uploads.push({ name, dataURL });
@@ -324,15 +324,81 @@ filePicker.onchange = async () => {
 
   cy.endBatch();
 
-  const sorted = cy.nodes().sort((a, b) =>
-    a.id().localeCompare(b.id()));
-  sorted.move({ parent: null });
+  cy.nodes().sort((a, b) => a.id().localeCompare(b.id()))
+            .move({ parent: null });
 
   applyNodeSize();
   document.getElementById('layoutBtn').click();
   setTimeout(saveAutosave, 650);
   updateHistoryButtons();
-};
+}
+
+filePicker.onchange = () => handleUploads(filePicker.files);
+
+const dropZone = document.getElementById('cy');
+
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.classList.add('drag-over');
+});
+
+dropZone.addEventListener('dragleave', () => {
+  dropZone.classList.remove('drag-over');
+});
+
+dropZone.addEventListener('drop', async e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+
+  /* direct files dragged from desktop */
+  if (e.dataTransfer.files && e.dataTransfer.files.length) {
+    handleUploads(e.dataTransfer.files);
+    return;
+  }
+
+  /* image URL dragged from another tab */
+  const url = e.dataTransfer.getData('text/uri-list') ||
+              e.dataTransfer.getData('text/plain');
+  if (url && /\.(png|jpe?g|webp|gif)$/i.test(url.trim())) {
+    try {
+      const resp = await fetch(url, { mode: 'cors' });
+      const blob = await resp.blob();
+      const ext  = blob.type.split('/')[1] || 'png';
+      const file = new File([blob],
+                   `Dropped_${Date.now()}.${ext}`, { type: blob.type });
+      handleUploads([file]);
+    } catch (err) {
+      console.warn('Dropped image fetch failed:', err);
+    }
+  }
+});
+
+document.addEventListener('paste', async e => {
+  if (!e.clipboardData) return;
+
+  /* grab any image files directly in the clipboard */
+  const files = Array.from(e.clipboardData.files)
+    .filter(f => /^image\//.test(f.type));
+
+  /* if no files, fall back to a pasted URL */
+  if (!files.length) {
+    const url = e.clipboardData.getData('text/uri-list') ||
+                e.clipboardData.getData('text/plain');
+    if (url && /\.(png|jpe?g|webp|gif)$/i.test(url.trim())) {
+      try {
+        const resp = await fetch(url, { mode: 'cors' });
+        const blob = await resp.blob();
+        const ext  = blob.type.split('/')[1] || 'png';
+        files.push(new File([blob],
+                  `Pasted_${Date.now()}.${ext}`, { type: blob.type }));
+      } catch (err) {
+        console.warn('Clipboard image fetch failed:', err);
+      }
+    }
+  }
+
+  if (files.length) handleUploads(files);
+});
 
 function fileToDataURL(file) {
   return new Promise(resolve => {
